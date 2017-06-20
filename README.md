@@ -1,0 +1,2 @@
+# pkg
+my go library
