@@ -1,4 +1,4 @@
-package util
+package sutil
 
 import (
 	"os/user"
