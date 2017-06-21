@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 )
 
-
-
 // go的任务队列，或者说goroutine管理器
 
 //const redis_prefix string = "queue"
