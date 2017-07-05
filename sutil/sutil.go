@@ -3,6 +3,8 @@ package sutil
 import (
 	"os/user"
 	"os"
+	"math/big"
+	"crypto/rand"
 )
 
 func HomeDir() string {
@@ -15,4 +17,16 @@ func HomeDir() string {
 		homeDir = os.Getenv("HOME")
 	}
 	return homeDir
+}
+
+func RandInt64(min, max int64) int64 {
+
+	i, err := rand.Int(rand.Reader, new(big.Int).SetInt64(max - min))
+	if err != nil {
+		panic(err)
+	}
+	return i.Int64() + min
+}
+func RandInt(min, max int) int {
+	return int(RandInt64(int64(min), int64(max)))
 }
