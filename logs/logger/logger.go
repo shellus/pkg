@@ -5,6 +5,7 @@ import (
 	"os"
 	"io"
 	"sync"
+	"fmt"
 )
 
 // RFC5424 log message levels.
@@ -39,7 +40,7 @@ type Logger struct {
 }
 
 func NewLogger() *Logger {
-	logger := log.New(os.Stderr, "", log.LstdFlags)
+	logger := log.New(os.Stdout, "", log.LstdFlags | log.Llongfile)
 	return &Logger{log:logger, level: LevelDebug, }
 }
 
@@ -61,7 +62,7 @@ func (bl *Logger) writeMsg(logLevel int, format string, v ...interface{}) {
 	if len(bl.prefix) != 0 {
 		format = bl.prefix + format
 	}
-	bl.log.Printf(format, v...)
+	bl.log.Output(4, fmt.Sprintf(format, v...))
 }
 
 // Alert Log ALERT level message.
