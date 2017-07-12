@@ -30,3 +30,8 @@ func RandInt64(min, max int64) int64 {
 func RandInt(min, max int) int {
 	return int(RandInt64(int64(min), int64(max)))
 }
+
+func FileExists(name string) bool {
+	_, err := os.Stat(name)
+	return !os.IsNotExist(err)
+}
