@@ -3,22 +3,41 @@ package queue
 import (
 	"fmt"
 	"testing"
+	"time"
 )
-var q = NewQueue(10, "goTest")
+
 
 func TestQueue(t *testing.T) {
+	var q = NewQueue()
 
-	q.Sub(func(j *Job)(err error) {
-		fmt.Println(j.Value)
+	q.AddThread("A")
+	q.AddThread("B")
+	q.AddThread("C")
+
+	handle := func(j *Job)(err error) {
+
+		fmt.Println(j.ThrValue, j.Value)
+
+		time.Sleep(time.Millisecond * 100)
+
 		return nil
-	})
+	}
+
+	q.Sub(handle)
+
+
 
 	q.Pub(&Job{Value:"hahaha"})
 	q.Pub(&Job{Value:"hahaha2"})
 	q.Pub(&Job{Value:"hahaha3"})
 	q.Pub(&Job{Value:"hahaha4"})
+	q.Pub(&Job{Value:"hahaha5"})
+	q.Pub(&Job{Value:"hahaha6"})
+	q.Pub(&Job{Value:"hahaha7"})
 
-	q.WorkDoneQuit()
+	for{
+		time.Sleep(time.Second)
+	}
 }
 
 
