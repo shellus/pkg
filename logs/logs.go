@@ -4,7 +4,6 @@ import (
 	"github.com/shellus/pkg/logs/logger"
 	"strings"
 	"fmt"
-	"os"
 )
 
 var beeLogger *logger.Logger
@@ -15,7 +14,7 @@ func init(){
 
 func Fatal(f interface{}, v ...interface{}) {
 	beeLogger.Error(formatLog(f, v...))
-	os.Exit(1)
+	panic(formatLog(f, v...))
 }
 // Error logs a message at error level.
 func Error(f interface{}, v ...interface{}) {
