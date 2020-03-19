@@ -49,7 +49,24 @@ func NewQueue(f Call) *queue {
 func (q *queue) AddThread(count int) {
 	for i := 0; i < count; i++ {
 		q.thrChan <- &thr{index: q.thrNum + 1}
+		q.thrNum = q.thrNum + 1
 	}
+}
+func (q *queue) SubThread(count uint) error {
+	if count <= 0 {
+		return fmt.Errorf("SubThread count(%d) <= 0", count, q.thrNum)
+	}
+	if count > q.thrNum {
+		return fmt.Errorf("SubThread count(%d) > queue.thrNum(%d)", count, q.thrNum)
+	}
+	q.thrNum = q.thrNum - count
+
+	// 消费掉thrExitChan，以让工作线程退出
+	for i := 0; i < int(count); i++ {
+		<-q.thrExitChan
+	}
+
+	return nil
 }
 
 // 所有工作线程执行完手头工作就退出
@@ -60,7 +77,6 @@ func (q *queue) Close() {
 func (q *queue) thrDispatch() {
 	for thr := range q.thrChan {
 		go q.jobDispatch(thr)
-		q.thrNum = q.thrNum + 1
 	}
 }
 
@@ -77,7 +93,6 @@ A:
 			q.call(j)
 		}
 	}
-	q.thrNum = q.thrNum - 1
 }
 func (q *queue) call(j *Job) {
 	err := q.f(j)
