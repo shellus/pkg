@@ -1,43 +1,49 @@
-package queue
+package queue_test
 
 import (
+	"../queue"
 	"fmt"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
 
+//type Item struct {
+//	name string
+//}
+//
+//type ItemQueue *queue
+//
+//func (j *queue) addItem(item Item) {
+//	j.AddContextThread()
+//}
 
 func TestQueue(t *testing.T) {
-	var q = NewQueue()
 
-	q.AddThread("A")
-	q.AddThread("B")
-	q.AddThread("C")
+	wg := sync.WaitGroup{}
 
-	handle := func(j *Job)(err error) {
-
-		fmt.Println(j.ThrValue, j.Value)
+	handle := func(j *queue.Job) (err error) {
+		time.Sleep(time.Second)
+		fmt.Println(j.Value)
 
 		time.Sleep(time.Millisecond * 100)
+
+		wg.Done()
 
 		return nil
 	}
 
-	q.Sub(handle)
+	var q = queue.NewQueue(handle)
+	q.AddThread(3)
 
+	testNum := 10
 
+	wg.Add(testNum)
 
-	q.Pub(&Job{Value:"hahaha"})
-	q.Pub(&Job{Value:"hahaha2"})
-	q.Pub(&Job{Value:"hahaha3"})
-	q.Pub(&Job{Value:"hahaha4"})
-	q.Pub(&Job{Value:"hahaha5"})
-	q.Pub(&Job{Value:"hahaha6"})
-	q.Pub(&Job{Value:"hahaha7"})
-
-	for{
-		time.Sleep(time.Second)
+	for i := 1; i <= testNum; i++ {
+		q.Pub(&queue.Job{Value: "hahaha" + strconv.Itoa(i)})
 	}
+
+	wg.Wait()
 }
-
-

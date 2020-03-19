@@ -1,82 +1,101 @@
 package queue
 
 import (
+	"context"
 	"encoding/json"
-	"github.com/shellus/pkg/logs"
+	"fmt"
 )
 
 // go的任务队列，或者说goroutine管理器
 
 //const redis_prefix string = "queue"
 
+type Call func(j *Job) (err error)
+
+type thr struct {
+	index uint
+	value interface{} // （线程用户值）
+	ctx   context.Context
+}
+
 type queue struct {
 	channelName string
-	jobs       chan *Job
-	subscriber  func(j *Job) (err error)
-	thrDispathChan chan interface{}
+	jobs        chan *Job
+	thrChan     chan *thr
+	thrExitChan chan *thr // 如果线程要退出，需要往这个chan里推数据，
+	thrNum      uint
+	f           Call // 回调函数 （消费函数）
 }
 
 type Job struct {
-	retry int // 已经尝试次数
+	retry int         // 已经尝试次数
 	Value interface{} // 任务参数
-	ThrValue interface{} // 线程上下文
 }
 
-func NewQueue() (q *queue) {
-	q = &queue{
-		jobs: make(chan *Job, 10000),
-		thrDispathChan: make(chan interface{}),
+func NewQueue(f Call) *queue {
+	q := &queue{
+		jobs:        make(chan *Job, 10000),
+		thrChan:     make(chan *thr),
+		thrExitChan: make(chan *thr),
+		f:           f,
 	}
-	go func() {
-		for thrValue := range q.thrDispathChan{
-			go q.thrDispath(thrValue)
-		}
-	}()
 
-	return
+	// 等待新增工作线程信号，直到调用queue.Close()
+	go q.thrDispatch()
+
+	return q
 }
 
-func (q *queue) AddThread(value interface{}){
-	q.thrDispathChan <- value
-}
-func (q *queue) AddEmptyThread(count int){
-	for i := 0; i < count; i++{
-		q.AddThread(true)
+func (q *queue) AddThread(count int) {
+	for i := 0; i < count; i++ {
+		q.thrChan <- &thr{index: q.thrNum + 1}
 	}
 }
+
+// 所有工作线程执行完手头工作就退出
 func (q *queue) Close() {
-	close(q.thrDispathChan)
+	close(q.thrChan)
+	close(q.jobs)
+}
+func (q *queue) thrDispatch() {
+	for thr := range q.thrChan {
+		go q.jobDispatch(thr)
+		q.thrNum = q.thrNum + 1
+	}
 }
 
-func (q *queue) thrDispath (thrValue interface{}) {
-	for j := range q.jobs {
-		j.ThrValue = thrValue
-		q.call(j)
+func (q *queue) jobDispatch(thr *thr) {
+
+A:
+	for {
+		select {
+		// 如果接受我退出那我就退出
+		case q.thrExitChan <- thr:
+			break A
+		// 如果有job我就执行job
+		case j := <-q.jobs:
+			q.call(j)
+		}
+	}
+	q.thrNum = q.thrNum - 1
+}
+func (q *queue) call(j *Job) {
+	err := q.f(j)
+
+	if err != nil {
+		fmt.Printf("queue call error: %s", err)
+		if j.retry < 3 {
+			q.Pub(j)
+		} else {
+			// todo 如何优雅的丢弃job
+			fmt.Printf("queue call error has max retry: %s", err)
+		}
 	}
 }
 
 func (q *queue) Pub(j *Job) {
 	j.retry++
 	q.jobs <- j
-}
-
-func (q *queue) Sub(f func(j *Job) (err error)) {
-	q.subscriber = f
-}
-
-func (q *queue) call(j *Job) {
-	// call
-	err := q.subscriber(j)
-
-	if err != nil {
-		logs.Warning("queue call error: %s", err)
-		if j.retry < 3 {
-			q.Pub(j)
-		}else {
-			// todo 如何优雅的丢弃job
-			logs.Error("queue call error has max retry: %s", err)
-		}
-	}
 }
 
 func serialization(j *Job) (s string) {
