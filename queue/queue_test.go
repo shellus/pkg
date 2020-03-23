@@ -34,7 +34,7 @@ func TestQueue(t *testing.T) {
 		return nil
 	}
 
-	var q = queue.NewQueue(handle)
+	var q = queue.NewQueue(handle, "")
 	q.AddThread(3)
 
 	testNum := 10
@@ -42,7 +42,7 @@ func TestQueue(t *testing.T) {
 	wg.Add(testNum)
 
 	for i := 1; i <= testNum; i++ {
-		q.Pub(&queue.Job{Value: "hahaha" + strconv.Itoa(i)})
+		q.Pub("hahaha"+strconv.Itoa(i), "")
 	}
 
 	wg.Wait()

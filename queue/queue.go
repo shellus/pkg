@@ -2,13 +2,10 @@ package queue
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
-// go的任务队列，或者说goroutine管理器
-
-//const redis_prefix string = "queue"
+// go的任务队列
 
 type Call func(j *Job) (err error)
 
@@ -28,12 +25,17 @@ type queue struct {
 }
 
 type Job struct {
-	retry int         // 已经尝试次数
-	Value interface{} // 任务参数
+	ChannelName string
+	Retry       int         // 已经尝试次数
+	Value       interface{} // 任务参数
 }
 
-func NewQueue(f Call) *queue {
+func NewQueue(f Call, channelName string) *queue {
+	if channelName == "" {
+		channelName = "default"
+	}
 	q := &queue{
+		channelName: channelName,
 		jobs:        make(chan *Job, 10000),
 		thrChan:     make(chan *thr),
 		thrExitChan: make(chan *thr),
@@ -99,32 +101,22 @@ func (q *queue) call(j *Job) {
 
 	if err != nil {
 		fmt.Printf("queue call error: %s", err)
-		if j.retry < 3 {
-			q.Pub(j)
+		if j.Retry < 3 {
+			q.pubJob(j)
 		} else {
 			// todo 如何优雅的丢弃job
-			fmt.Printf("queue call error has max retry: %s", err)
+			fmt.Printf("queue call error has max Retry: %s", err)
 		}
 	}
 }
 
-func (q *queue) Pub(j *Job) {
-	j.retry++
+func (q *queue) Pub(value interface{}, channelName string) {
+	if channelName == "default" {
+		channelName = "default"
+	}
+
+	q.pubJob(&Job{Value: value, ChannelName: channelName})
+}
+func (q *queue) pubJob(j *Job) {
 	q.jobs <- j
-}
-
-func serialization(j *Job) (s string) {
-	buf, err := json.Marshal(j)
-	if err != nil {
-		return ""
-	}
-	return string(buf)
-}
-
-func deserialization(s string, j *Job) (err error) {
-	err = json.Unmarshal([]byte(s), j)
-	if err != nil {
-		return err
-	}
-	return nil
 }
